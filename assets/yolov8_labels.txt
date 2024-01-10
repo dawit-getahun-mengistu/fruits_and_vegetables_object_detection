@@ -1,0 +1,17 @@
+fresh apple
+fresh banana
+fresh bellpepper
+fresh carrot
+fresh cucumber
+fresh mango
+fresh orange
+fresh potato
+rotten apple
+rotten banana
+rotten carrot
+rotten cucumber
+rotten mango
+rotten orange
+rotten potato
+rotten tomato
+rotten bellpeppe
