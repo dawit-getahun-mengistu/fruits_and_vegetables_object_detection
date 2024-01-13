@@ -1,9 +1,9 @@
 import 'dart:developer';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_tflite/flutter_tflite.dart';
 import 'package:flutter_vision/flutter_vision.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -40,12 +40,13 @@ class ScanController extends GetxController {
   var y = 0.0;
   var label = "";
   List<Map<String, dynamic>> yoloResults = [];
+  List<Map<String, dynamic>> onImageResults = [];
 
   initCamera() async {
     if (await Permission.camera.request().isGranted) {
       cameras = await availableCameras();
 
-      cameraController = await CameraController(
+      cameraController = CameraController(
         cameras[0],
         ResolutionPreset.max,
       );
@@ -69,20 +70,11 @@ class ScanController extends GetxController {
   }
 
   initYoloTFLite() async {
-    // await Tflite.loadModel(
-    //   // model: 'assets/mobilenet_v1_1.0_224.tflite',
-    //   // labels: 'assets/labels.txt',
-    //   model: 'assets/mobilenet_v1_1.0_224_quant.tflite',
-    //   labels: 'assets/labels_mobilenet_quant_v1_224.txt',
-    //   isAsset: true,
-    //   numThreads: 1,
-    //   useGpuDelegate: false,
-    // );
     await vision.loadYoloModel(
-      // labels: 'assets/yolov8_labels.txt',
-      // modelPath: 'assets/best_float32.tflite',
-      labels: 'assets/yolov8n_labels.txt',
-      modelPath: 'assets/yolov8n.tflite',
+      labels: 'assets/yolov8_labels.txt',
+      modelPath: 'assets/best_float32.tflite',
+      // labels: 'assets/yolov8n_labels.txt',
+      // modelPath: 'assets/yolov8n.tflite',
       modelVersion: "yolov8",
       quantization: false,
       numThreads: 1,
@@ -90,92 +82,7 @@ class ScanController extends GetxController {
     );
   }
 
-  oldobjectDetector(CameraImage image) async {
-    var detector = await Tflite.runModelOnFrame(
-      bytesList: image.planes.map((e) {
-        return e.bytes;
-      }).toList(),
-      asynch: true,
-      imageHeight: image.height,
-      imageWidth: image.width,
-      imageMean: 127.5,
-      imageStd: 127.5,
-      numResults: 1,
-      rotation: 90,
-      threshold: 0.4,
-    );
-
-    // if (detector != null) {
-    //   if (detector.first['confidence'] * 100 > 45) {
-    //     log("Result is ${detector.first[0]}");
-
-    //     label = detector.first[0]['label'].toString();
-    //     // h = detector.[0]['rect']['h'];
-    //     // w = detector.[0]['rect']['w'];
-    //     // x = detector.[0]['rect']['x'];
-    //     // y = detector.[0]['rect']['y'];
-    //     update();
-    //     log("label: $label");
-    //   }
-    //   update();
-    // }
-    if (detector != null && detector.isNotEmpty) {
-      double confidence = detector[0]['confidence'];
-      String label = detector[0]['label'];
-
-      if (confidence * 100 > 45) {
-        log("{confidence: $confidence, label: $label}");
-
-        // Set your label variable here if needed
-        // label = label;
-
-        update();
-        log("label: $label");
-      }
-      update();
-    }
-  }
-
   objectDetector(CameraImage image) async {
-    // try {
-    //   // if (Tflite.anchors == null) {
-    //   //   debugPrint("TensorFlow Lite interpreter not initialized.");
-    //   //   return;
-    //   // }
-
-    //   var detector = await Tflite.runModelOnFrame(
-    //     bytesList: image.planes.map((e) {
-    //       return e.bytes;
-    //     }).toList(),
-    //     asynch: false,
-    //     imageHeight: image.height,
-    //     imageWidth: image.width,
-    //     imageMean: 127.5,
-    //     imageStd: 127.5,
-    //     numResults: 1,
-    //     rotation: 90,
-    //     threshold: 0.4,
-    //   );
-
-    //   // log("Result is $detector");
-    //   if (detector != null) {
-    //     log("Detector is $detector");
-    //     if (detector.first['confidence'] * 100 > 45) {
-    //       log("Result is ${detector.first}");
-
-    //       label = detector.first['label'].toString();
-    //       // h = detector.first['rect']['h'];
-    //       // w = detector.first['rect']['w'];
-    //       // x = detector.first['rect']['x'];
-    //       // y = detector.first['rect']['y'];
-    //       update();
-    //       log("label: $label");
-    //     }
-    //     update();
-    //   }
-    // } catch (e) {
-    //   // log("Error in objectDetector: $e");
-    // }
     final result = await vision.yoloOnFrame(
         bytesList: image.planes.map((plane) => plane.bytes).toList(),
         imageHeight: image.height,
@@ -184,15 +91,37 @@ class ScanController extends GetxController {
         confThreshold: 0.4,
         classThreshold: 0.5);
 
-    log("result is ${result}");
+    log("result is $result");
 
-    // if (result.isNotEmpty) {
     yoloResults = result;
-    update();
-    // }
     update();
     log('yoloResults is ${yoloResults.length} ${result.length}');
   }
+
+  // predictOnImage(File picture) async {
+  //   // onImageResults.clear();
+  //   Uint8List byte = await picture.readAsBytes();
+  //   // Uint8List byte = await imageFile!.readAsBytes();
+  //   final image = await decodeImageFromList(byte);
+  //   var imageHeight = image.height;
+  //   var imageWidth = image.width;
+
+  //   final result = await vision.yoloOnImage(
+  //     bytesList: byte,
+  //     imageHeight: image.height,
+  //     imageWidth: image.width,
+  //     // iouThreshold: 0.0,
+  //     confThreshold: 0.4,
+  //     // classThreshold: null,
+  //   );
+
+  //   log("on Image result is $result");
+
+  //   onImageResults = result;
+  //   // update();
+  //   log('on Image Results is ${onImageResults.length} ${result.length} height: $imageHeight width: $imageWidth}');
+  //   return onImageResults;
+  // }
 
   List<Widget> displayBoxesAroundRecognizedObjects(Size screen) {
     if (yoloResults.isEmpty) return [];
